@@ -52,6 +52,26 @@ export default async function getRenders() {
                   `${item.name}.gif`,
                 ])
               : undefined,
+            item.wikiRenderStaticUmbraUrl
+              ? pipeFile(item.wikiRenderStaticUmbraUrl, [
+                  "images",
+                  "renders",
+                  "temtem",
+                  "umbra",
+                  "static",
+                  `${item.name}.png`,
+                ])
+              : undefined,
+            item.wikiRenderAnimatedUmbraUrl
+              ? pipeFile(item.wikiRenderAnimatedUmbraUrl, [
+                  "images",
+                  "renders",
+                  "temtem",
+                  "umbra",
+                  "animated",
+                  `${item.name}.gif`,
+                ])
+              : undefined,
           ]);
         } catch (e) {
           log.error(e.message);

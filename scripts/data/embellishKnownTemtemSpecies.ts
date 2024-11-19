@@ -60,6 +60,7 @@ export interface TemtemNoEvolution {
 
 export interface Temtem extends MinimalTemtem {
   traits: string[];
+  hasAnySubspeciesType: boolean;
   details: {
     height: {
       cm: number;
@@ -90,10 +91,14 @@ export interface Temtem extends MinimalTemtem {
   wikiRenderAnimatedUrl: string;
   wikiRenderStaticLumaUrl: string;
   wikiRenderAnimatedLumaUrl: string;
+  wikiRenderStaticUmbraUrl: string;
+  wikiRenderAnimatedUmbraUrl: string;
   renderStaticImage: string;
   renderStaticLumaImage: string;
+  renderStaticUmbraImage: string;
   renderAnimatedImage: string;
   renderAnimatedLumaImage: string;
+  renderAnimatedUmbraImage: string;
 }
 
 async function asyncGlob(p: string) {
@@ -138,6 +143,7 @@ export default async function embellishKnownTemtemSpecies(
           ...item,
           traits: getTraits(html),
           details: getDetails(html),
+          hasAnySubspeciesType: hasAnySubspeciesType(html),
           techniques: getTechniques(html),
           trivia: getTrivia(html),
           evolution: getEvolutionInfo(ar, item, html),
@@ -155,17 +161,25 @@ export default async function embellishKnownTemtemSpecies(
           wikiRenderAnimatedUrl: renderedImages.animated.normal,
           wikiRenderStaticLumaUrl: renderedImages.static.luma,
           wikiRenderAnimatedLumaUrl: renderedImages.animated.luma,
+          wikiRenderStaticUmbraUrl: renderedImages.static.umbra,
+          wikiRenderAnimatedUmbraUrl: renderedImages.animated.umbra,
           renderStaticImage: renderedImages.static.normal
             ? `/images/renders/temtem/static/${name}.png`
             : "",
           renderStaticLumaImage: renderedImages.static.luma
             ? `/images/renders/temtem/luma/static/${name}.png`
             : "",
+          renderStaticUmbraImage: renderedImages.static.umbra
+            ? `/images/renders/temtem/umbra/static/${name}.png`
+            : "",
           renderAnimatedImage: renderedImages.animated.normal
             ? `/images/renders/temtem/animated/${name}.gif`
             : "",
           renderAnimatedLumaImage: renderedImages.animated.luma
             ? `/images/renders/temtem/luma/animated/${name}.gif`
+            : "",
+          renderAnimatedUmbraImage: renderedImages.animated.umbra
+            ? `/images/renders/temtem/umbra/animated/${name}.gif`
             : "",
         };
       })
@@ -178,7 +192,11 @@ export default async function embellishKnownTemtemSpecies(
 
 function getRenderImages(html: string, name: string, debug: boolean = false) {
   const $ = cheerio.load(html);
-  const staticImages = typedToArray<{ luma: boolean; url: string }>(
+  const staticImages = typedToArray<{
+    luma: boolean;
+    umbra: boolean;
+    url: string;
+  }>(
     $(`a[href*=${name}_full_render]`).map((_i, el) => {
       const originalUrl = (
         $(el).find("img").attr("data-src") ||
@@ -187,6 +205,7 @@ function getRenderImages(html: string, name: string, debug: boolean = false) {
       ).replace("/thumb/", "/");
       return {
         luma: ($(el).attr("href") || "").includes(`Luma${name}`),
+        umbra: ($(el).attr("href") || "").includes(`Umbra${name}`),
         url: `https://temtem.wiki.gg${originalUrl
           .replace(`/${path.parse(originalUrl).name}`, "")
           .replace(".png.png", ".png")
@@ -195,13 +214,20 @@ function getRenderImages(html: string, name: string, debug: boolean = false) {
       };
     })
   ).reduce(
-    (acc, { luma, url }) => ({ ...acc, [luma ? "luma" : "normal"]: url }),
-    { normal: "", luma: "" }
+    (acc, { luma, umbra, url }) => ({
+      ...acc,
+      [luma ? "luma" : umbra ? "umbra" : "normal"]: url,
+    }),
+    { normal: "", luma: "", umbra: "" }
   );
   if (debug) {
     console.info("static", staticImages);
   }
-  const animatedImages = typedToArray<{ luma: boolean; url: string }>(
+  const animatedImages = typedToArray<{
+    luma: boolean;
+    umbra: boolean;
+    url: string;
+  }>(
     $(`a[href*=${name}_idle_animation]`).map((_i, el) => {
       const originalUrl = (
         $(el).find("img").attr("data-src") ||
@@ -210,6 +236,7 @@ function getRenderImages(html: string, name: string, debug: boolean = false) {
       ).replace("/thumb/", "/");
       return {
         luma: ($(el).attr("href") || "").includes(`Luma${name}`),
+        umbra: ($(el).attr("href") || "").includes(`Umbra${name}`),
         url: `https://temtem.wiki.gg${originalUrl
           .replace(`/${path.parse(originalUrl).name}`, "")
           .replace(".png.png", ".png")
@@ -218,8 +245,11 @@ function getRenderImages(html: string, name: string, debug: boolean = false) {
       };
     })
   ).reduce(
-    (acc, { luma, url }) => ({ ...acc, [luma ? "luma" : "normal"]: url }),
-    { normal: "", luma: "" }
+    (acc, { luma, umbra, url }) => ({
+      ...acc,
+      [luma ? "luma" : umbra ? "umbra" : "normal"]: url,
+    }),
+    { normal: "", luma: "", umbra: "" }
   );
   if (debug) {
     console.info("animated", animatedImages);
@@ -228,10 +258,12 @@ function getRenderImages(html: string, name: string, debug: boolean = false) {
     static: {
       normal: staticImages.normal || staticImages.luma,
       luma: staticImages.luma || staticImages.normal,
+      umbra: staticImages.umbra || staticImages.normal,
     },
     animated: {
       normal: animatedImages.normal || animatedImages.luma,
       luma: animatedImages.luma || animatedImages.normal,
+      umbra: animatedImages.umbra || animatedImages.normal,
     },
   };
 }
@@ -393,6 +425,11 @@ function getTraits(html: string) {
   return typedToArray<string>(
     $traitInfo.find("a").map((_i, el) => $(el).text().trim())
   );
+}
+
+function hasAnySubspeciesType(html: string) {
+  const $ = cheerio.load(html);
+  return $("#Subspecies_Variations").length != 0;
 }
 
 function getDetails(html: string) {

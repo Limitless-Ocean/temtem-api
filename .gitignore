@@ -88,3 +88,5 @@ typings/
 
 # dist
 dist/
+
+.idea
